@@ -1,29 +1,31 @@
-import React from 'react'
+import React from 'react';
+import PropTypes from 'prop-types';
 
 import Header from '../components/Header';
 import Body from '../components/Body';
 import Footer from '../components/Footer';
 import CollectivesForRedeemPageWithData from '../components/CollectivesForRedeemPageWithData';
-import withIntl from '../lib/withIntl';
-import withData from '../lib/withData'
-import colors from '../constants/colors';
-import { addGetLoggedInUserFunction } from '../graphql/queries';
 
+import colors from '../constants/colors';
+
+import withIntl from '../lib/withIntl';
+import withData from '../lib/withData';
+import withLoggedInUser from '../lib/withLoggedInUser';
 
 class RedeemPage extends React.Component {
 
+  static propTypes = {
+    getLoggedInUser: PropTypes.func.isRequired, // from withLoggedInUser
+  };
+
   constructor(props) {
     super(props);
-
-    this.state = {
-      LoggedInUser: null
-    }
-
+    this.state = { LoggedInUser: null };
   }
 
   async componentDidMount() {
     const { getLoggedInUser } = this.props;
-    const LoggedInUser = getLoggedInUser && await getLoggedInUser();
+    const LoggedInUser = await getLoggedInUser();
     this.setState({ LoggedInUser });
   }
 
@@ -39,7 +41,8 @@ class RedeemPage extends React.Component {
           .Redeem-hero .ctabtn a {
             color: white !important;
           }
-        `}</style>
+        `}
+        </style>
         <style jsx>{`
         .Redeem-container {
           background-color: ${colors.offwhite};
@@ -178,8 +181,8 @@ class RedeemPage extends React.Component {
         <Footer />
 
       </div>
-    )
+    );
   }
 }
 
-export default withData(addGetLoggedInUserFunction(withIntl(RedeemPage)));
+export default withData(withIntl(withLoggedInUser(RedeemPage)));

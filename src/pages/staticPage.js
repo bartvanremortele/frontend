@@ -121,7 +121,8 @@ class StaticPage extends React.Component {
             margin: -7px 0;
             line-height: 1.5rem;
           }
-        `}</style>
+        `}
+        </style>
         <Header title={title} LoggedInUser={this.state.LoggedInUser} />
         <Body>
           <div className="content">
@@ -136,7 +137,7 @@ class StaticPage extends React.Component {
         </Body>
         <Footer />
       </div>
-    )
+    );
   }
 }
 

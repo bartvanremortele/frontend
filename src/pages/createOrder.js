@@ -1,36 +1,55 @@
 import React from 'react';
-import { addGetLoggedInUserFunction } from '../graphql/queries';
-import { addCreateOrderMutation } from '../graphql/mutations';
-import withData from '../lib/withData';
-import withIntl from '../lib/withIntl';
+import PropTypes from 'prop-types';
+import { defineMessages } from 'react-intl';
+import { graphql } from 'react-apollo';
+import gql from 'graphql-tag';
+import { get, pick } from 'lodash';
+
+import { Router } from '../server/pages';
+
+import ErrorPage from '../components/ErrorPage';
 import Header from '../components/Header';
 import Body from '../components/Body';
 import Footer from '../components/Footer';
 import OrderForm from '../components/OrderForm';
 import CollectiveCover from '../components/CollectiveCover';
-import { defineMessages } from 'react-intl';
-import { Router } from '../server/pages';
-import { graphql } from 'react-apollo'
-import gql from 'graphql-tag'
-import ErrorPage from '../components/ErrorPage';
+
+import { addCreateOrderMutation } from '../graphql/mutations';
+
 import storage from '../lib/storage';
-import { get, pick } from 'lodash';
+import withData from '../lib/withData';
+import withIntl from '../lib/withIntl';
+import withLoggedInUser from '../lib/withLoggedInUser';
 
 class CreateOrderPage extends React.Component {
 
   static getInitialProps ({ query: { collectiveSlug, eventSlug, TierId, amount, quantity, totalAmount, interval, description, verb, redeem } }) {
-    return { slug: eventSlug || collectiveSlug, TierId, quantity, totalAmount: totalAmount || amount * 100, interval, description, verb, redeem }
+    return { slug: eventSlug || collectiveSlug, TierId, quantity, totalAmount: totalAmount || amount * 100, interval, description, verb, redeem };
   }
+
+  static propTypes = {
+    slug: PropTypes.string, // for addData
+    TierId: PropTypes.string,
+    quantity: PropTypes.number,
+    totalAmount: PropTypes.number,
+    interval: PropTypes.string,
+    description: PropTypes.string,
+    verb: PropTypes.string,
+    redeem: PropTypes.bool,
+    createOrder: PropTypes.func.isRequired, // from addCreateOrderMutation
+    data: PropTypes.object.isRequired, // from withData
+    intl: PropTypes.object.isRequired, // from withIntl
+    getLoggedInUser: PropTypes.func.isRequired, // from withLoggedInUser
+  };
 
   constructor(props) {
     super(props);
-    this.createOrder = this.createOrder.bind(this);
     this.state = { result: {}, loading: false };
-    const interval = (props.interval || "").toLowerCase().replace(/ly$/,'');
-     this.order = {
+    const interval = (props.interval || '').toLowerCase().replace(/ly$/,'');
+    this.order = {
       quantity: parseInt(props.quantity, 10) || 1,
       interval: (['month', 'year'].indexOf(interval) !== -1) ? interval : null,
-      totalAmount: parseInt(props.totalAmount, 10) || null
+      totalAmount: parseInt(props.totalAmount, 10) || null,
     };
 
     switch (props.verb) {
@@ -58,19 +77,16 @@ class CreateOrderPage extends React.Component {
       'order.success': { id: 'tier.order.success', defaultMessage: 'order processed successfully' },
       'order.error': { id: 'tier.order.error', defaultMessage: '😱 Oh crap! An error occured. Try again, or shoot a quick email to support@opencollective.com and we\'ll figure things out.' },
       'tier.donation.button': { id: 'tier.donation.button', defaultMessage: 'donate' },
-      'tier.donation.description': { id: 'tier.donation.description', defaultMessage: 'Thank you for your kind donation 🙏' }
+      'tier.donation.description': { id: 'tier.donation.description', defaultMessage: 'Thank you for your kind donation 🙏' },
     });
   }
 
   async componentDidMount() {
     const { getLoggedInUser, data } = this.props;
     const newState = {};
-    const LoggedInUser = getLoggedInUser && await getLoggedInUser();
+    newState.LoggedInUser = await getLoggedInUser();
     if (!data.Tier && data.fetchData) {
       data.fetchData();
-    }
-    if (LoggedInUser) {
-      newState.LoggedInUser = LoggedInUser;
     }
     this.referral = storage.get('referral');
     const matchingFund = storage.get('matchingFund');
@@ -88,19 +104,19 @@ class CreateOrderPage extends React.Component {
     }
   }
 
-  async createOrder(order) {
+  createOrder = async order => {
     const { intl, data } = this.props;
 
     if (this.referral && this.referral > 0) {
-      order.referral = { id: this.referral }
+      order.referral = { id: this.referral };
     }
     order.paymentMethod = pick(order.paymentMethod, ['uuid', 'service', 'type', 'token', 'customerId', 'data', 'name', 'currency', 'save']);
     if (this.state.LoggedInUser) {
       delete order.user;
     }
     try {
-      this.setState({ loading: true});
-      console.log(">>> createOrder", order);
+      this.setState({ loading: true });
+      console.log('>>> createOrder', order);
       const res = await this.props.createOrder(order);
       const orderCreated = res.data.createOrder;
       this.setState({ loading: false, order, result: { success: intl.formatMessage(this.messages['order.success']) } });
@@ -110,13 +126,13 @@ class CreateOrderPage extends React.Component {
         CollectiveId: order.collective.id,
         TierId: order.tier && order.tier.id,
         type: data.Collective.type,
-        totalAmount:order.totalAmount
+        totalAmount:order.totalAmount,
       });
     } catch (e) {
-      console.error(">>> createOrder error: ", e);
+      console.error('>>> createOrder error: ', e);
       this.setState({ loading: false, result: { error: `${intl.formatMessage(this.messages['order.error'])}: ${e}` } });
     }
-  }
+  };
 
   render() {
     const { intl, data } = this.props;
@@ -124,7 +140,7 @@ class CreateOrderPage extends React.Component {
 
     if (!data.Collective) return (<ErrorPage data={data} />);
 
-    const description = decodeURIComponent(this.props.description || "");
+    const description = decodeURIComponent(this.props.description || '');
     const collective = data.Collective;
 
     const TierId = parseInt(this.props.TierId);
@@ -160,7 +176,8 @@ class CreateOrderPage extends React.Component {
           .error {
             color: red;
           }
-        `}</style>
+        `}
+        </style>
         <Header
           title={collective.name}
           description={collective.description}
@@ -199,7 +216,6 @@ class CreateOrderPage extends React.Component {
       </div>
     );
   }
-
 }
 
 const addData = graphql(gql`
@@ -272,4 +288,4 @@ query Collective($slug: String) {
 }
 `);
 
-export default withData(withIntl(addGetLoggedInUserFunction(addData(addCreateOrderMutation(CreateOrderPage)))));
+export default withData(withIntl(withLoggedInUser(addData(addCreateOrderMutation(CreateOrderPage)))));
